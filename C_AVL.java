@@ -5,15 +5,21 @@ import java.util.Iterator;
 import java.util.concurrent.locks.*;
 import java.util.stream.*;
 
-public class AVL<T> {
-    T item;
-    AVLNode<T> root;
+/**
+ * This AVL tree is a monitor
+ * Conditional variables
+ */
 
-    public void rotate(AVLNode<T> node, int invert) {
+public class C_AVL {
+    public int item; // test variable
+    private AVLNode<Integer> root;
+    private Condition writeAvailable, readNext;
+
+    public void rotate(AVLNode<Integer> node, int invert) {
         // 0 for rotating left
         // 1 for rotating right
-        AVLNode<T> leftChild = node.getChild(0);
-        AVLNode<T> rightChild = node.getChild(1);
+        AVLNode<Integer> leftChild = node.getChild(0);
+        AVLNode<Integer> rightChild = node.getChild(1);
 
         if (invert == 1) {
             node.setChild(leftChild.getChild(1), 0);
@@ -27,29 +33,29 @@ public class AVL<T> {
         updateHeight(node);
     }
 
-    public void updateHeight(AVLNode<T> node) {
+    public void updateHeight(AVLNode<Integer> node) {
         assert(node != null);
-        AVLNode<T> left = node.getChild(0), right = node.getChild(1);
+        AVLNode<Integer> left = node.getChild(0), right = node.getChild(1);
         node.setHeight(1 + Math.max(obtainHeight(left), obtainHeight(right)));
     }
 
-    public int obtainHeight(AVLNode<T> node) {
+    public int obtainHeight(AVLNode<Integer> node) {
         return (node == null) ? -1 : node.getHeight();
     }
 
-    public int checkBal(AVLNode<T> node) {
+    public int checkBal(AVLNode<Integer> node) {
         return (node == null) ? 0 : obtainHeight(node.getChild(1)) - obtainHeight(node.getChild(0));
     }
 
-    public AVLNode<T> mostLeftChild(AVLNode<T> node) {
-        AVLNode<T> left = node.getChild(0);
+    public AVLNode<Integer> mostLeftChild(AVLNode<Integer> node) {
+        AVLNode<Integer> left = node.getChild(0);
         if (left == null) {
             return node;
         }
         return mostLeftChild(left);
     }
 
-    public AVLNode<T> rebalance(AVLNode<T> node) {
+    public AVLNode<Integer> rebalance(AVLNode<Integer> node) {
         updateHeight(node);
         int bal = checkBal(node);
         if (bal > 1) {
@@ -71,9 +77,9 @@ public class AVL<T> {
         return node;
     }
 
-    public AVLNode<T> insert(AVLNode<T> node, T item) {
+    public AVLNode<Integer> insert(AVLNode<Integer> node, Integer item) {
         if (node == null) {
-            return new AVLNode<T>(item, 0);
+            return new AVLNode<Integer>(item, 0);
         } else if (node.getItem() == item) {
             node.addCount();
             return node;
@@ -91,7 +97,7 @@ public class AVL<T> {
         return null;
     }
 
-    public AVLNode<T> delete(AVLNode<T> node, T item) {
+    public AVLNode<Integer> delete(AVLNode<Integer> node, Integer item) {
         if (node == null) {
             return node;
         } else if (node.getItem() != item) {
@@ -107,7 +113,7 @@ public class AVL<T> {
                 if (node.getChild(0) == null || node.getChild(1) == null) {
                     node = (node.getChild(0) == null) ? node.getChild(1) : node.getChild(0);
                 } else {
-                    AVLNode<T> mostLeftChild = mostLeftChild(node.getChild(1));
+                    AVLNode<Integer> mostLeftChild = mostLeftChild(node.getChild(1));
                     node.setItem(mostLeftChild.getItem());
                     node.setCount(mostLeftChild.getCount());
 
@@ -121,8 +127,8 @@ public class AVL<T> {
         return node;
     }
 
-    public AVLNode<T> search(T item) {
-        AVLNode<T> curr = root;
+    public AVLNode<Integer> search(Integer item) {
+        AVLNode<Integer> curr = root;
         while (curr != null) {
             if (curr.getItem() == item) break;
             // need something like a custom operator, this is a template for int
@@ -131,3 +137,4 @@ public class AVL<T> {
         return curr;
     }
 }
+
