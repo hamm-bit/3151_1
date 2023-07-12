@@ -2,9 +2,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator;
 
-import java.util.concurrent.locks.*;
-import java.util.stream.*;
-
 public class AVL<T> {
     T item;
     AVLNode<T> root;
