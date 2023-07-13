@@ -104,4 +104,8 @@ public class BucketNode {
         // queue this as a write to the next bucket
         next.insert(item);
     }
+
+    public void print() {
+        bucket.stream().forEach(item -> System.out.printf("%d ",item));
+    }
 }

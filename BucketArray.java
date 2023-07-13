@@ -14,7 +14,8 @@ public class BucketArray {
     private Semaphore delSem = new Semaphore(1, true);
     private ReadWriteLock arrLock = new ReentrantReadWriteLock();
     private Condition inSearch = arrLock.readLock().newCondition(),
-                      inWrite = arrLock.writeLock().newCondition();
+                      inWrite = arrLock.writeLock().newCondition(),
+                      inPrint = arrLock.readLock().newCondition();
     private int numSearch = 0, numWrite = 0;
 
     public BucketArray() {
@@ -66,10 +67,8 @@ public class BucketArray {
             // FIFO delete op
             delSem.acquireUninterruptibly();
             // wait until all search finishes
-            while (numSearch != 0) {
-                inWrite.awaitUninterruptibly();
-            }
-
+            while (numSearch != 0) inWrite.awaitUninterruptibly();
+            
             // TODO: cleanup() main body
             for (int i = size; i >= 0; i--) {
                 BucketNode curr = buckets.get(i), prevNext = null;
@@ -157,6 +156,15 @@ public class BucketArray {
     }
 
     public void print_sorted() {
+        // This should be a special read state, which would wait for all regular read and writes to finish
+        // then iterate through the printer
 
+        while(numSearch != 0 && numWrite != 0) inPrint.awaitUninterruptibly();
+        // BLOCK ALL INCOMING QUERY
+        // TODO: another semaphore bruh
+
+        buckets.stream().forEach(item -> item.print());
+        inPrint.signalAll();
+        // finish
     }
 }
