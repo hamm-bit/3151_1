@@ -22,13 +22,15 @@ public class BucketNode {
     // private Semaphore RSem = new Semaphore(1);
     
     // private BlockingQueue<Integer> q = new LinkedBlockingDeque<>();
-    public BucketNode next;
+    public BucketNode next = null;
+    public BucketArray higher;
     
     // begin .text
     // ==========================================
 
-    public BucketNode() {
+    public BucketNode(BucketArray array) {
         bucket = new LinkedList<Integer>();
+        higher = array;
     }
 
     public Integer head() {
@@ -61,7 +63,7 @@ public class BucketNode {
         // TODO: change this to a semaphore/listening monitor
         try {
             writeLock.lock();
-             
+
             // if consecutive writes, kept lock until no more consecutive
             /*
              * first_item = q.pop();
@@ -79,12 +81,14 @@ public class BucketNode {
                 addSorted(item);
                 // insert this at the next node
                 passOn(bucket.removeLast());
+                count--;
             }
             count++;
             // if consecutive writes, kept lock until no more consecutive
             // } while (q.peekFirst().isWrite());
 
         } finally {
+            WSem.release();
             writeLock.unlock();
         }
         
@@ -92,13 +96,11 @@ public class BucketNode {
 
     public boolean lookUp(Integer item) {
         // ensure that no write operations are taking place
-        
+        readLock.lock();
         
         boolean found = false;
+        // unlimited concurrency
         try {
-            readLock.lock();
-            // unlimited concurrency
-
             for (int i = 0; i < count; i++) {
                 if (bucket.get(i) == item) found = true;
             }
@@ -110,12 +112,16 @@ public class BucketNode {
 
     public boolean delete(Integer item) {
         // TODO: only one write can be concurrent (insert / delete)
-        
+        writeLock.lock();
         // mutex sem
-        WSem.acquireUninterruptibly();
-        bucket.remove(item);
-        count--;
-        WSem.release();
+        try {
+            WSem.acquireUninterruptibly();
+            bucket.remove(item);
+            count--;
+        } finally {
+            WSem.release();
+            writeLock.unlock();
+        }
         return count == 0;
     }
 
@@ -131,10 +137,26 @@ public class BucketNode {
 
     public void passOn(Integer item) {
         // queue this as a write to the next bucket
+        if (next == null) {
+            // signal main function to insert
+            // this has the advantage of no need to create a new bucket,
+            // since one may have already been created during this call.
+            higher.insert(item);
+            return;
+        }
         next.insert(item);
     }
 
+    public boolean isFullAndTail() {
+        return count == 4 && next == null;
+    }
+
     public void print() {
-        bucket.stream().forEach(item -> System.out.printf("%d ",item));
+        readLock.lock();
+        try {
+            bucket.stream().forEach(item -> System.out.printf("%d ",item));
+        } finally {
+            readLock.unlock();
+        }
     }
 }
