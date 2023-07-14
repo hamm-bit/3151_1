@@ -14,13 +14,14 @@ public class BucketNode {
     // and is only valid for the immediate next operation.
 
     private LinkedList<Integer> bucket;
-    private Condition inWrite, inRead, inPassOn;
+    private Condition inWrite, inRead;
     private ReadWriteLock lock = new ReentrantReadWriteLock();
     private Lock readLock = lock.readLock(), writeLock = lock.writeLock();
-    private Semaphore WSem = new Semaphore(1), DSem = new Semaphore(1);
+    private Semaphore WSem = new Semaphore(1);
+    // DSem = new Semaphore(1);
     // private Semaphore RSem = new Semaphore(1);
     
-    private BlockingQueue<Integer> q = new LinkedBlockingDeque<>();
+    // private BlockingQueue<Integer> q = new LinkedBlockingDeque<>();
     public BucketNode next;
     
     // begin .text
@@ -90,6 +91,9 @@ public class BucketNode {
     }
 
     public boolean lookUp(Integer item) {
+        // ensure that no write operations are taking place
+        
+        
         boolean found = false;
         try {
             readLock.lock();
