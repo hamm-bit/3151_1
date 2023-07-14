@@ -3,6 +3,8 @@ import java.util.LinkedList;
 import java.util.List;
 
 import java.util.concurrent.locks.*;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.BlockingQueue;
 
 public class BucketNode {
     public int count = 0;
@@ -15,8 +17,14 @@ public class BucketNode {
     private Condition inWrite, inRead, inPassOn;
     private ReadWriteLock lock = new ReentrantReadWriteLock();
     private Lock readLock = lock.readLock(), writeLock = lock.writeLock();
-
+    private Semaphore WSem = new Semaphore(1), DSem = new Semaphore(1);
+    // private Semaphore RSem = new Semaphore(1);
+    
+    private BlockingQueue<Integer> q = new LinkedBlockingDeque<>();
     public BucketNode next;
+    
+    // begin .text
+    // ==========================================
 
     public BucketNode() {
         bucket = new LinkedList<Integer>();
@@ -52,6 +60,14 @@ public class BucketNode {
         // TODO: change this to a semaphore/listening monitor
         try {
             writeLock.lock();
+             
+            // if consecutive writes, kept lock until no more consecutive
+            /*
+             * first_item = q.pop();
+             *  
+             *  do {
+             */
+            WSem.acquireUninterruptibly();
             if (count == 0) {
                 bucket = new LinkedList<Integer>();
                 bucket.add(item);
@@ -64,6 +80,9 @@ public class BucketNode {
                 passOn(bucket.removeLast());
             }
             count++;
+            // if consecutive writes, kept lock until no more consecutive
+            // } while (q.peekFirst().isWrite());
+
         } finally {
             writeLock.unlock();
         }
@@ -74,6 +93,8 @@ public class BucketNode {
         boolean found = false;
         try {
             readLock.lock();
+            // unlimited concurrency
+
             for (int i = 0; i < count; i++) {
                 if (bucket.get(i) == item) found = true;
             }
@@ -85,8 +106,12 @@ public class BucketNode {
 
     public boolean delete(Integer item) {
         // TODO: only one write can be concurrent (insert / delete)
+        
+        // mutex sem
+        WSem.acquireUninterruptibly();
         bucket.remove(item);
         count--;
+        WSem.release();
         return count == 0;
     }
 
