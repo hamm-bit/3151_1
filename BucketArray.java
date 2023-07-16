@@ -83,6 +83,7 @@ public class BucketArray {
                     buckets.add(newNode);
                 }
             } finally {
+                numAppend--;
                 writeLock.unlock();
             }
 
@@ -93,6 +94,7 @@ public class BucketArray {
         
         // Queue starts here
         // TODO: implement semaphore for holding the read and write pointers in order
+        numWrite++;
 
         readLock.lock();
         try {
@@ -103,6 +105,7 @@ public class BucketArray {
             bucket.insert(item);
             size++;
         } finally {
+            numWrite--;
             readLock.unlock();
         }
 
@@ -112,7 +115,7 @@ public class BucketArray {
 
     public void delete(Integer item) {
         BucketNode bucket = search(item);
-        deletedCount = bucket.delete(item) == true ? 1 : 0;
+        deletedCount += bucket.delete(item) == true ? 1 : 0;
 
         if (deletedCount >= 6) cleanup();
             /*
@@ -127,7 +130,7 @@ public class BucketArray {
             // buckets must not vanish when deleting
             // new buckets can only be appended so it wouldn't affect the correctness
             // TODO: implement a lock for bucket deletion
-            // TODO: implement an update function that stays sensitive to the 
+            // TODO: implement an update function that stays sensitive to the
     }
     
 
@@ -151,7 +154,7 @@ public class BucketArray {
             janitorCount = 1;
     
             // wait until current searches finish
-            while (numWrite != 0 && numSearch != 0) afterHour.awaitUninterruptibly();
+            while (numWrite != 0 || numSearch != 0) afterHour.awaitUninterruptibly();
             
             // TODO: cleanup() main body
             for (int i = size; i >= 0; i--) {
@@ -166,6 +169,7 @@ public class BucketArray {
             // This is quadratic time complexity
             // however there's no good way to delete a chunk off an array in linear time
             deletedCount = 0;
+            janitorCount = 0;
         } finally {
             delSem.release();
             writeLock.unlock();
