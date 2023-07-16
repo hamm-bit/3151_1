@@ -14,7 +14,6 @@ public class BucketNode {
     // and is only valid for the immediate next operation.
 
     private LinkedList<Integer> bucket;
-    private Condition inWrite, inRead;
     private ReadWriteLock lock = new ReentrantReadWriteLock();
     private Lock readLock = lock.readLock(), writeLock = lock.writeLock();
     private Semaphore WSem = new Semaphore(1);
@@ -39,7 +38,7 @@ public class BucketNode {
 
     private void addSorted(Integer item) {
         int idx = 0;
-        while (bucket.get(idx) < item) {idx++;}
+        while (idx < count && bucket.get(idx) < item) {idx++;}
         bucket.add(idx, item);
     }
 
@@ -70,11 +69,20 @@ public class BucketNode {
              *  
              *  do {
              */
-            WSem.acquireUninterruptibly();
+        
+            System.out.println("node_insert: writelock engaged");
+
+            // WSem.acquireUninterruptibly();
+
+            System.out.println("node_insert: mutex acquired");
+
             if (count == 0) {
+
+                System.out.println("node_insert: case empty bucket");
+
                 bucket = new LinkedList<Integer>();
                 bucket.add(item);
-                return;
+
             } else if (count < 4) {
                 addSorted(item);
             } else {
@@ -83,15 +91,22 @@ public class BucketNode {
                 passOn(bucket.removeLast());
                 count--;
             }
+
+
+            System.out.println("node_insert: node insertion complete");
+
+
             count++;
             // if consecutive writes, kept lock until no more consecutive
             // } while (q.peekFirst().isWrite());
 
         } finally {
-            WSem.release();
+            // WSem.release();
             writeLock.unlock();
         }
         
+        System.out.println("node_insert: writelock Unlocked");
+
     }
 
     public boolean lookUp(Integer item) {
@@ -101,9 +116,13 @@ public class BucketNode {
         boolean found = false;
         // unlimited concurrency
         try {
-            for (int i = 0; i < count; i++) {
-                if (bucket.get(i) == item) found = true;
-            }
+            System.out.println("node_lookUp: lock acquired");
+            System.out.println(head());
+            found = bucket.contains(item);
+            // for (int i = 0; i < count; i++) {
+            //     System.out.println("nonde_lookUp: searching");
+            //     if (bucket.get(i).equals(item)) found = true;
+            // }
         } finally {
             readLock.unlock();
         }
@@ -115,11 +134,17 @@ public class BucketNode {
         writeLock.lock();
         // mutex sem
         try {
-            WSem.acquireUninterruptibly();
-            bucket.remove(item);
-            count--;
+            System.out.println("node_delete: lock acquired");
+            // remove the item in a traditional fashion
+            // for some reason LL.remove behaves bizarrely for non-existing element
+            if (bucket.remove( (Integer) item )) {
+                System.out.println("node_delete: item removed");
+                count--;
+            } else {
+                System.out.println("node_delete: item not present");
+            }
+
         } finally {
-            WSem.release();
             writeLock.unlock();
         }
         return count == 0;
@@ -141,7 +166,7 @@ public class BucketNode {
             // signal main function to insert
             // this has the advantage of no need to create a new bucket,
             // since one may have already been created during this call.
-            higher.insert(item);
+            higher.appendInsert(item);
             return;
         }
         next.insert(item);
@@ -153,8 +178,10 @@ public class BucketNode {
 
     public void print() {
         readLock.lock();
+        System.out.println("bucket: ");
         try {
             bucket.stream().forEach(item -> System.out.printf("%d ",item));
+            System.out.println();
         } finally {
             readLock.unlock();
         }
