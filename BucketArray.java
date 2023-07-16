@@ -56,6 +56,7 @@ public class BucketArray {
          */
 
         // POTENTIAL ISSUE: not mutex with cleanup()
+        // THIS IS RESOLVED by not updating the array size until the appendInsert is complete
 
         numWrite++;
 
